@@ -5,22 +5,23 @@
 #include <set>
 
 std::set<int> rand_combi(int n, int k, std::mt19937 &engine, std::uniform_real_distribution<double> distribution);
-void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int>> cleared, int width, int height);
+void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int>> cleared, int height, int width);
+bool inside_board(int row, int col, int height, int width);
 
 int main()
 {
-    int width;
     int height;
+    int width;
     int num_mines;
 
     // Get board parameters from user
-    std::cout << "Board Width: ";
-    std::cin >> width;
     std::cout << "Board Height: ";
     std::cin >> height;
+    std::cout << "Board Width: ";
+    std::cin >> width;
     std::cout << "Number of Mines: ";
     std::cin >> num_mines;
-    int tiles = width * height;
+    int tiles = height * width;
 
     // Initializing board
     // -1 => Mine
@@ -29,11 +30,27 @@ int main()
     std::mt19937 engine(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
     std::set<int> mine_locs = rand_combi(tiles, num_mines, engine, distribution);
-    int mine_num = 0;
     for (auto loc : mine_locs) {
-        std::cout << mine_num + 1 << ". " << loc << std::endl;
         board[loc / width][loc % width] = -1;
-        mine_num++;
+    }
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (board[i][j] >= 0) {
+                for (int vert = -1; vert < 2; vert++) {
+                    for (int hor = -1; hor < 2; hor++) {
+                        if (vert || hor) {
+                            int row = i + vert;
+                            int col = j + hor;
+                            if (inside_board(row, col, height, width)) {
+                                if (board[row][col] == -1) {
+                                    board[i][j]++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Matrix of cleared cells
@@ -69,7 +86,7 @@ std::set<int> rand_combi(int n, int k, std::mt19937 &generator, std::uniform_rea
 }
 
 // Draws current state of board, taking into account which cells have been cleared
-void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int>> cleared, int width, int height)
+void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int>> cleared, int height, int width)
 {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -86,4 +103,8 @@ void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int
         }
         std::cout << std::endl;
     }
+}
+
+bool inside_board(int row, int col, int height, int width) {
+    return row >= 0 && col >= 0 && row < height && col < width;
 }
