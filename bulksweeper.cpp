@@ -75,12 +75,6 @@ int main()
         while (cmdliststream >> cmd) {
             std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
             if (cmd == "TRY") {
-                // Put cleared cells in a heap or something to make this more efficient
-                // for (int i = 0; i < height; i++) {
-                    // for (int j = 0; j < width; j++) {
-                        // if (cleared[i][j] == 1) cleared[i][j] = 2;
-                    // }
-                // }
                 while (!to_clear.empty()) {
                     row = to_clear.top() / width;
                     col = to_clear.top() % width;
@@ -104,21 +98,42 @@ int main()
                 switch(code) {
                     case 'C':
                         std::cout << "Clearing " << row << "," << col << std::endl;
-                        cleared[row][col] = 1;
-                        to_clear.push(row*width+col);
+                        if (inside_board(row, col, height, width) && cleared[row][col] == 0) {
+                            cleared[row][col] = 1;
+                            to_clear.push(row*width+col);
+                        }
+                        else {
+                            std::cout << "Invalid Clear" << std::endl;
+                        }
                         break;
                     case 'F':
                         std::cout << "Flagging " << row << "," << col << std::endl;
-                        if (cleared[row][col] == 0) cleared[row][col] = -1;
+                        if (inside_board(row, col, height, width) && cleared[row][col] <= 0) {
+                            if (cleared[row][col] == 0) {
+                                cleared[row][col] = -1;
+                            }
+                            else if (cleared[row][col] == -1) {
+                                cleared[row][col] = 0;
+                            }
+                        }
+                        else {
+                            std::cout << "Invalid Flag" << std::endl;
+                        }
                         break;
                     case 'X':
                         std::cout << "Chording " << row << "," << col << std::endl;
-                        if (cleared[row][col] == 2 && mines_surrounding(cleared, row, col, width, height) == mines_surrounding(board, row, col, width, height)) {
+                        if (inside_board(row, col, height, width) && cleared[row][col] == 2 && mines_surrounding(cleared, row, col, width, height) == mines_surrounding(board, row, col, width, height)) {
                             for (int i = -1; i < 2; i++) {
                                 for (int j = -1; j < 2; j++) {
-                                    if (cleared[row+i][col+j] == 0) cleared[row+i][col+j] = 1;
+                                    if (cleared[row+i][col+j] == 0) {
+                                        cleared[row+i][col+j] = 1;
+                                        to_clear.push((row+i)*width + col+j);
+                                    }
                                 }
                             }
+                        }
+                        else {
+                            std::cout << "Invalid Chord" << std::endl;
                         }
                         break;
                 }
