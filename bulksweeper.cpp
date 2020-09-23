@@ -17,6 +17,7 @@ int mines_surrounding(std::vector<std::vector<int>> board, int row, int col, int
 
 int main()
 {
+    // Random number generation
     unsigned seed = std::chrono::steady_clock::now().time_since_epoch().count();
     std::mt19937 engine(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
@@ -25,6 +26,7 @@ int main()
     int width;
     int num_mines;
     bool game_over = false;
+    bool game_lost = false;
 
     // Get board parameters from user
     // Non-numeric Error Handling: http://www.cplusplus.com/forum/beginner/203085/#msg965593
@@ -46,6 +48,7 @@ int main()
     // -1 => Mine
     std::vector<std::vector<int>> board = std::vector<std::vector<int>>(height, std::vector<int>(width, 0));
     // Matrix of cleared cells
+    // -1 => Flagged
     // 0 => Uncleared
     // 1 => Cleared in a try
     // 2 => Confirmed clear (after a try)
@@ -69,14 +72,12 @@ int main()
 
         while (cmdliststream >> cmd) {
             if (cmd == "TRY") {
+                // Put cleared cells in a heap or something to make this more efficient
                 for (int i = 0; i < height; i++) {
                     for (int j = 0; j < width; j++) {
                         if (cleared[i][j] == 1) cleared[i][j] = 2;
                     }
                 }
-                draw_board(board, cleared, height, width);
-                game_over = true;
-                break;
             }
             else if (std::regex_match(cmd,std::regex("[CcFfXx][0-9]+,[0-9]+"))) {
                 std::stringstream cmdstream(cmd);
@@ -95,7 +96,7 @@ int main()
                     case 'X':
                     case 'x':
                         std::cout << "Chording " << row << "," << col << std::endl;
-                        if (mines_surrounding(cleared, row, col, width, height) == mines_surrounding(board, row, col, width, height)) {
+                        if (cleared[row][col] == 2 && mines_surrounding(cleared, row, col, width, height) == mines_surrounding(board, row, col, width, height)) {
                             for (int i = -1; i < 2; i++) {
                                 for (int j = -1; j < 2; j++) {
                                     if (cleared[row+i][col+j] == 0) cleared[row+i][col+j] = 1;
@@ -109,9 +110,22 @@ int main()
                 std::cout << "Not recognized command" << std::endl;
             }
             draw_board(board, cleared, height, width);
+
+            bool board_cleared = true;
+            for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width; j++) {
+                    board_cleared = board_cleared && (board[i][j] == -1 || cleared[i][j] == 2);
+                    // Loss
+                    if (board[i][j] == -1 && cleared[i][j] == 2) {
+                        game_over = true;
+                        game_lost = true;
+                    }
+                }
+            }
+            if (board_cleared) game_over = true;
         }
     }
-
+    std::cout << std::boolalpha << "OVER: " << game_over << " LOST: " << game_lost << std::endl;
 
 }
 
