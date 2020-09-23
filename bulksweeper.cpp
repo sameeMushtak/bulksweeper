@@ -8,6 +8,7 @@
 #include <regex>
 #include <limits>
 #include <algorithm>
+#include <stack>
 
 std::vector<std::vector<int>> populate_board(std::vector<std::vector<int>> board, std::set<int> mine_locs, int height, int width);
 std::set<int> rand_combi(int n, int k, std::mt19937 &engine, std::uniform_real_distribution<double> distribution);
@@ -60,6 +61,7 @@ int main()
     draw_board(board, cleared, height, width);
 
     // Getting user's moves
+    std::stack<int> to_clear;
     while (!game_over) {
         std::string cmd_list;
         std::getline(std::cin, cmd_list);
@@ -71,30 +73,45 @@ int main()
         char comma;
 
         while (cmdliststream >> cmd) {
+            std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
             if (cmd == "TRY") {
                 // Put cleared cells in a heap or something to make this more efficient
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++) {
-                        if (cleared[i][j] == 1) cleared[i][j] = 2;
+                // for (int i = 0; i < height; i++) {
+                    // for (int j = 0; j < width; j++) {
+                        // if (cleared[i][j] == 1) cleared[i][j] = 2;
+                    // }
+                // }
+                while (!to_clear.empty()) {
+                    row = to_clear.top() / width;
+                    col = to_clear.top() % width;
+                    to_clear.pop();
+                    cleared[row][col] = 2;
+                    if (board[row][col] == 0) {
+                        for (int i = -1; i < 2; i++) {
+                            for (int j = -1; j < 2; j++) {
+                                if ((i || j) && inside_board(row+i, col+j, height, width) && cleared[row+i][col+j] == 0) {
+                                    cleared[row+i][col+j] = 1;
+                                    to_clear.push((row+i)*width + col+j);
+                                }
+                            }
+                        }
                     }
                 }
             }
-            else if (std::regex_match(cmd,std::regex("[CcFfXx][0-9]+,[0-9]+"))) {
+            else if (std::regex_match(cmd,std::regex("[CFX][0-9]+,[0-9]+"))) {
                 std::stringstream cmdstream(cmd);
                 cmdstream >> code >> row >> comma >> col;
                 switch(code) {
                     case 'C':
-                    case 'c':
                         std::cout << "Clearing " << row << "," << col << std::endl;
                         cleared[row][col] = 1;
+                        to_clear.push(row*width+col);
                         break;
                     case 'F':
-                    case 'f':
                         std::cout << "Flagging " << row << "," << col << std::endl;
-                        cleared[row][col] = -1;
+                        if (cleared[row][col] == 0) cleared[row][col] = -1;
                         break;
                     case 'X':
-                    case 'x':
                         std::cout << "Chording " << row << "," << col << std::endl;
                         if (cleared[row][col] == 2 && mines_surrounding(cleared, row, col, width, height) == mines_surrounding(board, row, col, width, height)) {
                             for (int i = -1; i < 2; i++) {
@@ -126,6 +143,7 @@ int main()
         }
     }
     std::cout << std::boolalpha << "OVER: " << game_over << " LOST: " << game_lost << std::endl;
+    // Show all cells at this point (make cleared = 2 for all indices)
 
 }
 
@@ -144,19 +162,6 @@ std::vector<std::vector<int>> populate_board(std::vector<std::vector<int>> board
         for (int j = 0; j < width; j++) {
             if (board[i][j] >= 0) {
                 board[i][j] = mines_surrounding(board, i, j, height, width);
-                // for (int vert = -1; vert < 2; vert++) {
-                    // for (int hor = -1; hor < 2; hor++) {
-                        // if (vert || hor) {
-                            // int row = i + vert;
-                            // int col = j + hor;
-                            // if (inside_board(row, col, height, width)) {
-                                // if (board[row][col] == -1) {
-                                    // board[i][j]++;
-                                // }
-                            // }
-                        // }
-                    // }
-                // }
             }
         }
     }
@@ -186,7 +191,17 @@ std::set<int> rand_combi(int n, int k, std::mt19937 &generator, std::uniform_rea
 void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int>> cleared, int height, int width)
 {
     for (int i = 0; i < height; i++) {
+        if (i == 0) {
+            std::cout << " ";
+            for (int j = 0; j < width; j++) {
+                std::cout << ((j % 5 == 0) ? "*" : " ");
+            }
+            std::cout << std::endl;
+        }
         for (int j = 0; j < width; j++) {
+            if (j == 0) {
+                std::cout << ((i % 5 == 0) ? "*" : " ");
+            }
             // Switch cleared[i][j]
             if (cleared[i][j] == 0) {
                 std::cout << "#";
@@ -199,6 +214,7 @@ void draw_board(std::vector<std::vector<int>> board, std::vector<std::vector<int
             }
             else if (cleared[i][j] == 2) {
                 if (board[i][j] == -1) std::cout << "X";
+                else if (board[i][j] == 0) std::cout << " ";
                 else std::cout << board[i][j];
             }
         }
